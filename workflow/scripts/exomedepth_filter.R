@@ -8,11 +8,11 @@ library(rlang)
 
 {
   #VARIANT FILES
-  Conifer <- read.csv("snakemake@input[["conifer"]]", header=TRUE, sep = "\t")
+  Conifer <- read.csv(snakemake@input[["conifer"]], header=TRUE, sep = "\t")
   data(Conrad.hg19)
-  ED <- read.csv("snakemake@input[["ED_common"]]", header=TRUE, sep = "\t")
+  ED <- read.csv(snakemake@input[["ED_common"]], header=TRUE, sep = "\t")
   load(snakemake@input[["exon"]])
-  WW25 <- read.csv("snakemake@input[["WW25"]]", header=TRUE, sep = "\t")
+  WW25 <- read.csv(snakemake@input[["WW25"]], header=TRUE, sep = "\t")
 
 
   #CONRAD
