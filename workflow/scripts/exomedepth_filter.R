@@ -52,10 +52,11 @@ library(rlang)
 
   #ExomeDepth
   ED.GRanges <- GenomicRanges::GRanges(seqnames = ED$chromosome,
-                IRanges::IRanges(start=ED$start,end=ED$end), names = ED$id)
+                  IRanges::IRanges(start=ED$start,end=ED$end), names = ED$id)
 
-  all.exons <- AnnotateExtra(x = all.exons, reference.annotation = ED.GRanges,
-                min.overlap = 0.8, column.name = 'EDcommon')
+  all.exons <- AnnotateExtra(x = all.exons, 
+                  reference.annotation = ED.GRanges,
+                  min.overlap = 0.8, column.name = 'EDcommon')
 ​
   ED.GRanges <- GenomicRanges::GRanges(seqnames = ED$chromosome,
               IRanges::IRanges(start=ED$start,end=ED$end), names = ED$CNV_type)
