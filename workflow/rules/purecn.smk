@@ -10,8 +10,8 @@ rule purecn:
     input:
         seg="cnv_sv/cnvkit_export_seg/{sample}_{type}.seg",
         regions="cnv_sv/cnvkit_batch/{sample}/{sample}_{type}.cnr",
-        vcf="snv_indels/gatk_mutect2/{sample}_{type}.merged.unfiltered.vcf.gz",
-        tbi="snv_indels/gatk_mutect2/{sample}_{type}.merged.unfiltered.vcf.gz.tbi",
+        vcf="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz",
+        tbi="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz.tbi",
     output:
         temp("cnv_sv/purecn/{sample}_{type}.csv"),
     params:
