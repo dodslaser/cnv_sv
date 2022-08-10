@@ -45,6 +45,18 @@ wildcard_constraints:
     type="N|T|R",
 
 
+def get_tc(wildcards):
+    try:
+        purecn_data = pd.read_csv(f"cnv_sv/purecn/{wildcards.sample}_{wildcards.type}.csv")
+        tc = ["Purity"][0]
+        if tc == "?":
+            raise Exception("No purity found")
+    except:
+        tc = get_sample(samples, wildcards)["tumor_content"]
+    finally:
+        return tc
+
+
 def compile_output_list(wildcards):
     files = {
         "cnv_sv/cnvkit_call": [

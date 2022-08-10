@@ -13,6 +13,14 @@ rule purecn:
         tbi="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz.tbi",
     output:
         temp("cnv_sv/purecn/{sample}_{type}.csv"),
+        temp("cnv_sv/purecn/{sample}_{type}.rds"),
+        temp("cnv_sv/purecn/{sample}_{type}.pdf"),
+        temp("cnv_sv/purecn/{sample}_{type}_dnacopy.seg"),
+        temp("cnv_sv/purecn/{sample}_{type}_chromosomes.pdf"),
+        temp("cnv_sv/purecn/{sample}_{type}_segmentation.pdf"),
+        temp("cnv_sv/purecn/{sample}_{type}_local_optima.pdf"),
+        temp("cnv_sv/purecn/{sample}_{type}_variants.csv"),
+        temp("cnv_sv/purecn/{sample}_{type}_loh.csv"),
     params:
         mappingBias=config.get("purecn", {}).get("mappingBias", ""),
         extra=config.get("purecn", {}).get("extra", ""),
