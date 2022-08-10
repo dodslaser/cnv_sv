@@ -1,26 +1,27 @@
-
 __author__ = "Erik Demitz-Helin"
 __copyright__ = "Copyright 2022, Erik Demitz-Helin"
 __email__ = "erik.demitz-helin@gu.se"
 __license__ = "GPL-3"
 
 
-
 rule purecn:
     input:
-        seg="cnv_sv/cnvkit_export_seg/{sample}_{type}.seg",
-        regions="cnv_sv/cnvkit_batch/{sample}/{sample}_{type}.cnr",
+        segments="cnv_sv/gatk_cnv_model_segments/{sample}_{type}.clean.modelFinal.seg",
+        denoisedCopyRatio="cnv_sv/gatk_cnv_denoise_read_counts/{sample}_{type}.clean.denoisedCR.tsv",
+        hdf5Tumor="cnv_sv/gatk_cnv_collect_read_counts/{sample}_{type}.counts.hdf5",
         vcf="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz",
         tbi="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz.tbi",
     output:
         temp("cnv_sv/purecn/{sample}_{type}.csv"),
     params:
+        mappingBias=config.get("purecn", {}).get("mappingBias", ""),
         extra=config.get("purecn", {}).get("extra", ""),
     log:
-        "cnv_sv/purecn/{sample}_{type}.output.log"
+        "cnv_sv/purecn/{sample}_{type}.output.log",
     benchmark:
         repeat(
-            "cnv_sv/purecn/{sample}_{type}.output.benchmark.tsv", config.get("purecn", {}).get("benchmark_repeats", 1)
+            "cnv_sv/purecn/{sample}_{type}.output.benchmark.tsv",
+            config.get("purecn", {}).get("benchmark_repeats", 1),
         )
     threads: config.get("purecn", {}).get("threads", config["default_resources"]["threads"])
     resources:
@@ -34,14 +35,16 @@ rule purecn:
     conda:
         "../envs/purecn.yaml"
     message:
-       "{rule}: Quantify purity/ploidy for {wildcards.sample}"
+        "{rule}: Quantify purity/ploidy for {wildcards.sample}"
     shell:
         """
         (
             Rscript $PURECN/PureCN.R \
                 --sampleid={wildcards.sample}_{wildcards.type} \
-                --seg-file={input.seg} \
-                --tumor={input.regions} \
+                --seg-file={input.segments} \
+                --log-ratio-file={input.denoisedCopyRatio} \
+                --mapping-bias-file={params.mappingBias} \
+                --tumor={input.hdf5Tumor} \
                 --vcf={input.vcf} \
                 --genome=hg19 \
                 --parallel \
@@ -57,4 +60,3 @@ rule purecn:
             echo '{wildcards.sample}_{wildcards.type},?,?,?,?,TRUE,TRUE,FALSE,PURECN_ERROR' >> {output}
         )
         """
-
