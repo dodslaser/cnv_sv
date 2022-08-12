@@ -54,7 +54,7 @@ rule cnvkit_batch:
 rule cnvkit_call:
     input:
         segment="cnv_sv/cnvkit_batch/{sample}/{sample}_{type}.cns",
-        vcf="snv_indels/bcbio_variation_recall_ensemble/{sample}_{type}.germline.vcf",
+        vcf="snv_indels/bcbio_variation_recall_ensemble/{sample}_{type}.ensembled.filter.germline.vcf",
     output:
         segment=temp("cnv_sv/cnvkit_call/{sample}_{type}.loh.cns"),
     params:
@@ -127,7 +127,7 @@ rule cnvkit_scatter:
     input:
         segments="cnv_sv/cnvkit_batch/{sample}/{sample}_{type}.cns",
         segment_regions="cnv_sv/cnvkit_batch/{sample}/{sample}_{type}.cnr",
-        vcf="snv_indels/bcbio_variation_recall_ensemble/{sample}_{type}.germline.vcf",
+        vcf="snv_indels/bcbio_variation_recall_ensemble/{sample}_{type}.ensembled.filter.germline.vcf",
     output:
         plot=temp("cnv_sv/cnvkit_scatter/{sample}_{type}.png"),
     params:
@@ -190,5 +190,6 @@ rule cnvkit_export_seg:
     shell:
         "(cnvkit.py export seg "
         "{input.segments} "
+        "--enumerate-chroms "
         "-o {output.seg} "
         "{params.extra}) &> {log}"
