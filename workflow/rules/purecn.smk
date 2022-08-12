@@ -9,8 +9,8 @@ rule purecn:
         segments="cnv_sv/gatk_cnv_model_segments/{sample}_{type}.clean.modelFinal.seg",
         denoisedCopyRatio="cnv_sv/gatk_cnv_denoise_read_counts/{sample}_{type}.clean.denoisedCR.tsv",
         hdf5Tumor="cnv_sv/gatk_cnv_collect_read_counts/{sample}_{type}.counts.hdf5",
-        vcf="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz",
-        tbi="snv_indels/gatk_mutect2/{sample}_{type}.merged.softfiltered.vcf.gz.tbi",
+        vcf="snv_indels/gatk_mutect2/{sample}_{type}.normalized.sorted.vcf.gz",
+        tbi="snv_indels/gatk_mutect2/{sample}_{type}.normalized.sorted.vcf.gz.tbi",
     output:
         temp("cnv_sv/purecn/{sample}_{type}.csv"),
         temp("cnv_sv/purecn/{sample}_{type}.rds"),
