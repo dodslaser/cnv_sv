@@ -60,7 +60,7 @@ rule purecn:
                 --force \
                 --seed=123 \
                 --post-optimize \
-                --fun-segmentation=PSCBS \
+                --fun-segmentation=Hclust \
                 --out=cnv_sv/purecn/{wildcards.sample}_{wildcards.type} \
                 {params.extra}
         ) &> {log} || (
