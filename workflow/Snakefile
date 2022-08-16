@@ -16,6 +16,7 @@ include: "rules/manta.smk"
 include: "rules/pindel.smk"
 include: "rules/svdb.smk"
 include: "rules/purecn.smk"
+include: "rules/vcf.smk"
 
 
 rule all:

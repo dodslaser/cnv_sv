@@ -9,8 +9,7 @@ rule purecn:
         segments="cnv_sv/gatk_cnv_model_segments/{sample}_{type}.clean.modelFinal.seg",
         denoisedCopyRatio="cnv_sv/gatk_cnv_denoise_read_counts/{sample}_{type}.clean.denoisedCR.tsv",
         hdf5Tumor="cnv_sv/gatk_cnv_collect_read_counts/{sample}_{type}.counts.hdf5",
-        vcf="snv_indels/gatk_mutect2/{sample}_{type}.normalized.sorted.vcf.gz",
-        tbi="snv_indels/gatk_mutect2/{sample}_{type}.normalized.sorted.vcf.gz.tbi",
+        vcf="snv_indels/bcbio_variation_recall_ensemble/{sample}_{type}.ensembled.vcf.gz",
     output:
         temp("cnv_sv/purecn/{sample}_{type}.csv"),
         temp("cnv_sv/purecn/{sample}_{type}.rds"),
@@ -63,8 +62,5 @@ rule purecn:
                 --fun-segmentation=Hclust \
                 --out=cnv_sv/purecn/{wildcards.sample}_{wildcards.type} \
                 {params.extra}
-        ) &> {log} || (
-            echo '"Sampleid","Purity","Ploidy","Sex","Contamination","Flagged","Failed","Curated","Comment"' > {output}
-            echo '{wildcards.sample}_{wildcards.type},?,?,?,?,TRUE,TRUE,FALSE,PURECN_ERROR' >> {output}
-        )
+        ) &> {log}
         """
