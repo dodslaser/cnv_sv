@@ -39,67 +39,93 @@ validate(units, schema="../schemas/units.schema.yaml")
 
 ### Set wildcard constraints
 
-
 wildcard_constraints:
     sample="|".join(samples.index),
     type="N|T|R",
 
 
-def get_tc(wildcards):
-    try:
-        purecn_data = pd.read_csv(f"cnv_sv/purecn/{wildcards.sample}_{wildcards.type}.csv")
-        tc = ["Purity"][0]
-        if tc == "?":
-            raise Exception("No purity found")
-    except:
-        tc = get_sample(samples, wildcards)["tumor_content"]
-    finally:
-        return tc
+def get_purecn_inputs(wildcards: snakemake.io.Wildcards):
+    inputs = {
+        k: v for k, v in config.get("purecn", {}).items()
+        if k in ["normaldb", "mapping_bias_file", "snp_blacklist"]
+    }
+    
+    segmentation_method = config.get("purecn", {}).get("segmentation_method", "")
+    if segmentation_method == "internal":
+        inputs.update(
+            {
+                "tumor": f"cnv_sv/purecn_coverage/{wildcards.sample}_T_coverage_loess.txt.gz",
+                "intervals": config.get("purecn", {}).get("intervals"),
+                "normaldb": config.get("purecn", {}).get("normaldb")
+            }
+        )
+    elif segmentation_method == "GATK4":
+        inputs.update(
+            {
+                "tumor": f"cnv_sv/gatk_cnv_collect_read_counts/{wildcards.sample}_T.counts.hdf5",
+                "seg_file": f"cnv_sv/gatk_cnv_model_segments/{wildcards.sample}_T.clean.modelFinal.seg", 
+                "log_ratio_file": f"cnv_sv/gatk_cnv_denoise_read_counts/{wildcards.sample}_T.clean.denoisedCR.tsv",
+            }
+        )
+    elif segmentation_method == "cnvkit":
+        inputs.update(
+            {   
+                "tumor": f"cnv_sv/cnvkit_batch/{wildcards.sample}/{wildcards.sample}_T.cnr", 
+                "seg_file": f"cnv_sv/cnvkit_export_seg/{wildcards.sample}_T.seg",
+            }
+        )
+    return inputs
+
+
+def get_purecn_extra(input: snakemake.io.InputFiles, threads: int):
+    log_ratio_file = input.get("log_ratio_file")
+    seg_file = input.get("seg_file")
+    intervals = input.get("intervals")
+    normaldb = input.get("normaldb")
+    mapping_bias_file = input.get("mapping_bias_file")
+    snp_blacklist = input.get("snp_blacklist")
+
+    extra = "".join(
+        [
+            config.get("purecn", {}).get("extra", ""),
+            f" --log-ratio-file={log_ratio_file}" if log_ratio_file is not None else "",
+            f" --seg-file={seg_file}" if seg_file is not None else "",
+            f" --intervals={intervals}" if intervals is not None else "",
+            f" --mapping-bias-file={mapping_bias_file}" if mapping_bias_file is not None else "",
+            f" --normaldb={normaldb}" if normaldb is not None else "",
+            f" --snp-blacklist={snp_blacklist}" if snp_blacklist is not None else "",
+            f" --parallel --cores={threads}" if threads > 1 else "",
+        ]
+    )
+    
+    return extra
 
 
 def compile_output_list(wildcards):
-    files = {
-        "cnv_sv/cnvkit_call": [
-            "loh.cns",
-        ],
-        "cnv_sv/cnvkit_diagram": [
-            "pdf",
-        ],
-        "cnv_sv/cnvkit_scatter": [
-            "png",
-        ],
-        "cnv_sv/cnvkit_vcf": [
-            "vcf",
-        ],
-        "cnv_sv/gatk_cnv_vcf": [
-            "vcf",
-        ],
-        "cnv_sv/svdb_merge": [
-            "merged.vcf",
-        ],
-        "cnv_sv/svdb_query": [
-            "svdb_query.vcf",
-        ],
-        "cnv_sv/exomedepth": [
-            "SV.txt",
-        ],
-        "cnv_sv/purecn":
-        [
-            "csv"
-        ],
-    }
-    output_files = [
-        "%s/%s_%s.%s" % (prefix, sample, unit_type, suffix)
-        for prefix in files.keys()
+    output_files = {
+        path 
         for sample in get_samples(samples)
         for unit_type in get_unit_types(units, sample)
-        for suffix in files[prefix]
-    ]
-    output_files.append(["cnv_sv/pindel/%s.vcf" % (sample) for sample in get_samples(samples)])
-    output_files.append(
-        ["cnv_sv/manta_run_workflow_tn/%s/results/variants/somaticSV.vcf.gz" % (sample) for sample in get_samples(samples)]
-    )
-    output_files.append(
-        ["cnv_sv/manta_run_workflow_t/%s/results/variants/tumorSV.vcf.gz" % (sample) for sample in get_samples(samples)]
-    )
-    return output_files
+        for path in [
+            f"cnv_sv/cnvkit_call/{sample}_{unit_type}.loh.cns",
+            f"cnv_sv/cnvkit_diagram/{sample}_{unit_type}.pdf",
+            f"cnv_sv/cnvkit_scatter/{sample}_{unit_type}.png",
+            f"cnv_sv/cnvkit_vcf/{sample}_{unit_type}.vcf",
+            f"cnv_sv/gatk_cnv_vcf/{sample}_{unit_type}.vcf",
+            f"cnv_sv/svdb_merge/{sample}_{unit_type}.merged.vcf",
+            f"cnv_sv/svdb_query/{sample}_{unit_type}.svdb_query.vcf",
+            f"cnv_sv/exomedepth/{sample}_{unit_type}.SV.txt",
+            f"cnv_sv/pindel/{sample}.vcf",
+            f"cnv_sv/manta_run_workflow_tn/{sample}/results/variants/somaticSV.vcf.gz",
+            f"cnv_sv/purecn_coverage{sample}_{unit_type}_coverage.txt.gz",
+            f"cnv_sv/purecn_coverage{sample}_{unit_type}_coverage_loess.txt.gz",
+            f"cnv_sv/purecn_coverage{sample}_{unit_type}_coverage_loess.png",
+            f"cnv_sv/purecn_coverage{sample}_{unit_type}_coverage_loess_qc.txt",
+            f"cnv_sv/purecn/{sample}_coverage.txt.gz",
+            f"cnv_sv/purecn/{sample}_coverage_loess.txt.gz",
+            f"cnv_sv/purecn/{sample}_coverage_loess.png",
+            f"cnv_sv/purecn/{sample}_coverage_loess_qc.txt",
+        ]
+    }
+
+    return [*output_files]

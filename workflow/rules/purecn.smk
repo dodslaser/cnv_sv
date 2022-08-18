@@ -4,30 +4,85 @@ __email__ = "erik.demitz-helin@gu.se"
 __license__ = "GPL-3"
 
 
-rule purecn:
+rule purecn_coverage:
     input:
-        segments="cnv_sv/gatk_cnv_model_segments/{sample}_{type}.clean.modelFinal.seg",
-        denoisedCopyRatio="cnv_sv/gatk_cnv_denoise_read_counts/{sample}_{type}.clean.denoisedCR.tsv",
-        hdf5Tumor="cnv_sv/gatk_cnv_collect_read_counts/{sample}_{type}.counts.hdf5",
-        vcf="snv_indels/bcbio_variation_recall_ensemble/{sample}_{type}.ensembled.vcf.gz",
+        bam="alignment/samtools_merge_bam/{sample}_{type}.bam",
+        bai="alignment/samtools_merge_bam/{sample}_{type}.bam.bai",
     output:
-        temp("cnv_sv/purecn/{sample}_{type}.csv"),
-        temp("cnv_sv/purecn/{sample}_{type}.rds"),
-        temp("cnv_sv/purecn/{sample}_{type}.pdf"),
-        temp("cnv_sv/purecn/{sample}_{type}_dnacopy.seg"),
-        temp("cnv_sv/purecn/{sample}_{type}_chromosomes.pdf"),
-        temp("cnv_sv/purecn/{sample}_{type}_segmentation.pdf"),
-        temp("cnv_sv/purecn/{sample}_{type}_local_optima.pdf"),
-        temp("cnv_sv/purecn/{sample}_{type}_variants.csv"),
-        temp("cnv_sv/purecn/{sample}_{type}_loh.csv"),
+        temp(
+            expand(
+                "cnv_sv/purecn_coverage/{{sample}}{ext}",
+                ext=[
+                    "_coverage.txt.gz"
+                    "_coverage.loess.txt.gz"
+                    "_coverage.loess.png"
+                    "_coverage.loess_qc.txt"
+                ]
+            )
+        ),
     params:
-        mappingBias=config.get("purecn", {}).get("mappingBias", ""),
-        extra=config.get("purecn", {}).get("extra", ""),
+        intervals=config.get("purecn_coverage", {}).get("intervals", ""),
+        extra=config.get("purecn_coverage", {}).get("extra", ""),
     log:
-        "cnv_sv/purecn/{sample}_{type}.output.log",
+        "cnv_sv/purecn_coverage/{sample}_{type}.output.log",
     benchmark:
         repeat(
-            "cnv_sv/purecn/{sample}_{type}.output.benchmark.tsv",
+            "cnv_sv/purecn_coverage/{sample}_{type}.output.benchmark.tsv",
+            config.get("purecn_coverage", {}).get("benchmark_repeats", 1),
+        )
+    threads: config.get("purecn_coverage", {}).get("threads", config["default_resources"]["threads"])
+    resources:
+        threads=config.get("purecn_coverage", {}).get("threads", config["default_resources"]["threads"]),
+        time=config.get("purecn_coverage", {}).get("time", config["default_resources"]["time"]),
+        mem_mb=config.get("purecn_coverage", {}).get("mem_mb", config["default_resources"]["mem_mb"]),
+        mem_per_cpu=config.get("purecn_coverage", {}).get("mem_per_cpu", config["default_resources"]["mem_per_cpu"]),
+        partition=config.get("purecn_coverage", {}).get("partition", config["default_resources"]["partition"]),
+    container:
+        config.get("purecn_coverage", {}).get("container", config["default_container"])
+    conda:
+        "../envs/purecn_coverage.yaml"
+    message:
+        "{rule}: Calculate coverage for {wildcards.sample}"
+    shell:
+        "(Rscript $PURECN/Coverage.R "
+        "--out-dir=cnv_sv/purecn_coverage "
+        "--bam={input.bam} "
+        "--intervals={params.intervals} "
+        "--cores={threads} "
+        "{params.extra}) &> {log}"
+
+
+rule purecn:
+    input:
+        unpack(get_purecn_inputs),
+        vcf="snv_indels/gatk_mutect2/{sample}_T.merged.softfiltered.vcf.gz",
+        tbi="snv_indels/gatk_mutect2/{sample}_T.merged.softfiltered.vcf.gz.tbi",
+    output:
+        temp(
+            expand(
+                "cnv_sv/purecn/{{sample}}{ext}",
+                ext=[
+                    ".rds"
+                    ".pdf"
+                    "_dnacopy.seg"
+                    "_chromosomes.pdf"
+                    "_segmentation.pdf"
+                    "_local_optima.pdf"
+                    "_variants.csv"
+                    "_loh.csv"
+                ]
+            )
+        ),
+    params:
+        fun_segmentation=config.get("purecn", {}).get("fun_segmentation", ""),
+        genome=config.get("purecn", {}).get("genome", ""),
+        interval_padding=config.get("purecn", {}).get("interval_padding", ""),
+        extra=get_purecn_extra,
+    log:
+        "cnv_sv/purecn/{sample}_T.output.log",
+    benchmark:
+        repeat(
+            "cnv_sv/purecn/{sample}_T.output.benchmark.tsv",
             config.get("purecn", {}).get("benchmark_repeats", 1),
         )
     threads: config.get("purecn", {}).get("threads", config["default_resources"]["threads"])
@@ -44,23 +99,13 @@ rule purecn:
     message:
         "{rule}: Quantify purity/ploidy for {wildcards.sample}"
     shell:
-        """
-        (
-            Rscript $PURECN/PureCN.R \
-                --sampleid={wildcards.sample}_{wildcards.type} \
-                --seg-file={input.segments} \
-                --log-ratio-file={input.denoisedCopyRatio} \
-                --mapping-bias-file={params.mappingBias} \
-                --tumor={input.hdf5Tumor} \
-                --vcf={input.vcf} \
-                --genome=hg19 \
-                --parallel \
-                --cores={threads} \
-                --force \
-                --seed=123 \
-                --post-optimize \
-                --fun-segmentation=Hclust \
-                --out=cnv_sv/purecn/{wildcards.sample}_{wildcards.type} \
-                {params.extra}
-        ) &> {log}
-        """
+        "(Rscript $PURECN/PureCN.R "
+        "--tumor={input.tumor} "
+        "--vcf={input.vcf} "
+        "--genome={params.genome} "
+        "--fun-segmentation={params.fun_segmentation} "
+        "--interval-padding={params.interval_padding} "
+        "--sampleid={wildcards.sample} "
+        "--out=cnv_sv/purecn/{wildcards.sample}_T "
+        "--force --seed=1337 "
+        "{params.extra}) &> {log}"
